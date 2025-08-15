@@ -25,7 +25,7 @@ function formatTimestamp(date) {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: true,          // 12-hour format with AM/PM
+        hour12: true,
         timeZone: 'Asia/Dhaka'
     }).format(date).replace(',', ';');
 }
@@ -38,20 +38,15 @@ async function checkButtonWithPuppeteer() {
         headless: true,
         args: [
             '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--single-process',
-            '--disable-extensions'
-        ],
+            '--disable-setuid-sandbox'
+        ]
     });
 
     const page = await browser.newPage();
 
     try {
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 12000 });
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
 
-        // Get all buttons inside .pr-buttons elements
         const buttons = await page.$$eval('.pr-buttons button', btns =>
             btns.map(btn => ({
                 text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
@@ -59,7 +54,6 @@ async function checkButtonWithPuppeteer() {
             }))
         );
 
-        // Check each button
         for (const btn of buttons) {
             const logTime = formatTimestamp(new Date());
             console.log(`[${logTime}] Button text: "${btn.text}" | Active: ${btn.active}`);
