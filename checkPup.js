@@ -72,45 +72,35 @@ function formatTimestamp(date) {
   // Track which buttons we've already notified as active
   const notifiedButtons = new Set();
 
-  async function checkButtons() {
-    const startTime = formatTimestamp(new Date());
-    console.log(`[${startTime}] Starting a new check...`);
-
-    try {
-      const buttons = await page.$$eval('.pr-buttons button', btns =>
-        btns.map(btn => ({
-          text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
-          active: !btn.disabled
-        }))
-      );
-
-      for (const btn of buttons) {
-        const logTime = formatTimestamp(new Date());
-        console.log(`[${logTime}] Button text: "${btn.text}" | Active: ${btn.active}`);
-
-        // Only send notification once per button
-        if (btn.active && BOT_TOKEN && CHAT_ID && !notifiedButtons.has(btn.text)) {
-          const notifTime = formatTimestamp(new Date());
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: CHAT_ID,
-              text: `🎉 Goethe BD button is ACTIVE!\nButton text: "${btn.text}"\nTime: ${notifTime}`
-            })
-          });
-          console.log(`[${notifTime}] ✅ Telegram notification sent`);
-          notifiedButtons.add(btn.text);
-        }
-      }
-    } catch (err) {
-      const errTime = formatTimestamp(new Date());
-      console.error(`[${errTime}] ❌ Error:`, err.message);
-    } finally {
-      // Repeat check every 500ms without reloading the page
-      setTimeout(checkButtons, 500);
+  // Expose function to the page to trigger Telegram notifications
+  await page.exposeFunction('notifyButtonActive', async (text) => {
+    if (!notifiedButtons.has(text) && BOT_TOKEN && CHAT_ID) {
+      const notifTime = formatTimestamp(new Date());
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: `🎉 Goethe BD button is ACTIVE!\nButton text: "${text}"\nTime: ${notifTime}`
+        })
+      });
+      console.log(`[${notifTime}] ✅ Telegram notification sent`);
+      notifiedButtons.add(text);
     }
-  }
+  });
 
-  checkButtons();
+  // Inject MutationObserver to detect button state changes immediately
+  await page.evaluate(() => {
+    const buttons = document.querySelectorAll('.pr-buttons button');
+    buttons.forEach(btn => {
+      const observer = new MutationObserver(() => {
+        if (!btn.disabled) {
+          window.notifyButtonActive(btn.innerText.replace(/\s*\n\s*/g, ' ').trim());
+        }
+      });
+      observer.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+    });
+  });
+
+  console.log(`[${formatTimestamp(new Date())}] ✅ MutationObserver set up. Watching button states...`);
 })();
