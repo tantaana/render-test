@@ -66,17 +66,14 @@ function formatTimestamp(date) {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
   console.log(`[${formatTimestamp(new Date())}] ✅ Browser launched and first page loaded.`);
 
+  // Wait for buttons to appear (handle spinner delay)
+  await page.waitForSelector('.pr-buttons button', { timeout: 5000 });
+
   async function checkButtons() {
     const startTime = formatTimestamp(new Date());
     console.log(`[${startTime}] Starting a new check...`);
 
     try {
-      // Use goto instead of reload
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-
-      // Wait up to 1500ms for buttons to appear (spinner delay)
-      await page.waitForSelector('.pr-buttons button', { timeout: 1500 });
-
       const buttons = await page.$$eval('.pr-buttons button', btns =>
         btns.map(btn => ({
           text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
@@ -105,9 +102,8 @@ function formatTimestamp(date) {
       const errTime = formatTimestamp(new Date());
       console.error(`[${errTime}] ❌ Error:`, err.message);
     } finally {
-      const randomDelay = 2000 + Math.random() * 500; // ~2.0–2.5s
-      console.log(`[${formatTimestamp(new Date())}] ⏱ Next check in ${(randomDelay / 1000).toFixed(2)} seconds`);
-      setTimeout(checkButtons, randomDelay);
+      // Repeat check every 500ms without reloading the page
+      setTimeout(checkButtons, 500);
     }
   }
 
