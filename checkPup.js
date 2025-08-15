@@ -30,60 +30,68 @@ function formatTimestamp(date) {
     }).format(date).replace(',', ';');
 }
 
-async function checkButtonWithPuppeteer() {
-    const startTime = formatTimestamp(new Date());
-    console.log(`[${startTime}] Starting a new check...`);
-
+(async () => {
     const browser = await puppeteer.launch({
         headless: true,
         args: [
             '--no-sandbox',
-            '--disable-setuid-sandbox'
-        ]
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--single-process',
+            '--disable-extensions'
+        ],
     });
 
     const page = await browser.newPage();
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
 
-    try {
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
+    console.log(`[${formatTimestamp(new Date())}] ✅ Browser launched and page loaded.`);
 
-        const buttons = await page.$$eval('.pr-buttons button', btns =>
-            btns.map(btn => ({
-                text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
-                active: !btn.disabled
-            }))
-        );
+    // Function to check buttons
+    async function checkButtons() {
+        const startTime = formatTimestamp(new Date());
+        console.log(`[${startTime}] Starting a new check...`);
 
-        for (const btn of buttons) {
-            const logTime = formatTimestamp(new Date());
-            console.log(`[${logTime}] Button text: "${btn.text}" | Active: ${btn.active}`);
+        try {
+            // Reload page each check
+            await page.reload({ waitUntil: 'networkidle2', timeout: 15000 });
 
-            if (btn.active) {
-                const notifTime = formatTimestamp(new Date());
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: CHAT_ID,
-                        text: `🎉 Goethe BD button is ACTIVE!\nButton text: "${btn.text}"\nTime: ${notifTime}`
-                    })
-                });
-                console.log(`[${notifTime}] ✅ Telegram notification sent for active button`);
+            const buttons = await page.$$eval('.pr-buttons button', btns =>
+                btns.map(btn => ({
+                    text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
+                    active: !btn.disabled
+                }))
+            );
+
+            for (const btn of buttons) {
+                const logTime = formatTimestamp(new Date());
+                console.log(`[${logTime}] Button text: "${btn.text}" | Active: ${btn.active}`);
+
+                if (btn.active) {
+                    const notifTime = formatTimestamp(new Date());
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: CHAT_ID,
+                            text: `🎉 Goethe BD button is ACTIVE!\nButton text: "${btn.text}"\nTime: ${notifTime}`
+                        })
+                    });
+                    console.log(`[${notifTime}] ✅ Telegram notification sent for active button`);
+                }
             }
+        } catch (err) {
+            const errTime = formatTimestamp(new Date());
+            console.error(`[${errTime}] ❌ Error:`, err.message);
+        } finally {
+            // Random interval between 3.4–3.9 seconds
+            const randomInterval = 3400 + Math.random() * 500;
+            console.log(`[${formatTimestamp(new Date())}] ⏱ Next check in ${(randomInterval / 1000).toFixed(2)} seconds`);
+            setTimeout(checkButtons, randomInterval);
         }
-
-    } catch (err) {
-        const errTime = formatTimestamp(new Date());
-        console.error(`[${errTime}] ❌ Error:`, err.message);
-    } finally {
-        await browser.close();
-
-        // Random interval between 3.4–3.9 seconds
-        const randomInterval = 3400 + Math.random() * 500;
-        console.log(`[${formatTimestamp(new Date())}] ⏱ Next check in ${(randomInterval / 1000).toFixed(2)} seconds`);
-
-        setTimeout(checkButtonWithPuppeteer, randomInterval);
     }
-}
 
-checkButtonWithPuppeteer();
+    // Start the loop
+    checkButtons();
+})();
