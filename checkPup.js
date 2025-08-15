@@ -1,13 +1,22 @@
 const puppeteer = require('puppeteer');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const http = require('http'); // <-- added
+
+// Simple HTTP server to satisfy Render web service requirement
+const PORT = process.env.PORT || 10000;
+http.createServer((req, res) => {
+    res.writeHead(200, {'Content-Type': 'text/plain'});
+    res.end('Render worker is alive!');
+}).listen(PORT, () => {
+    console.log(`✅ HTTP server running on port ${PORT}, keeping Render web service alive`);
+});
 
 // === Telegram setup ===
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 
 if (!BOT_TOKEN || !CHAT_ID) {
-    console.error("❌ BOT_TOKEN or CHAT_ID is missing. Please set your environment variables!");
-    // Don't exit, just continue; Render will keep the worker alive
+    console.error("❌ BOT_TOKEN or CHAT_ID is missing. Telegram notifications won't be sent.");
 }
 
 // === Target URL ===
@@ -51,7 +60,6 @@ function formatTimestamp(date) {
         console.log(`[${startTime}] Starting a new check...`);
 
         try {
-            // Reload page each check
             await page.reload({ waitUntil: 'networkidle2', timeout: 15000 });
 
             const buttons = await page.$$eval('.pr-buttons button', btns =>
@@ -82,13 +90,11 @@ function formatTimestamp(date) {
             const errTime = formatTimestamp(new Date());
             console.error(`[${errTime}] ❌ Error:`, err.message);
         } finally {
-            // Random interval between 3.4–3.9 seconds
             const randomInterval = 3400 + Math.random() * 500;
             console.log(`[${formatTimestamp(new Date())}] ⏱ Next check in ${(randomInterval / 1000).toFixed(2)} seconds`);
             setTimeout(checkButtons, randomInterval);
         }
     }
 
-    // Start the loop
     checkButtons();
 })();
