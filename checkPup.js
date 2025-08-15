@@ -74,6 +74,9 @@ function formatTimestamp(date) {
       // Use goto instead of reload
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
+      // Wait up to 500ms for buttons to appear (spinner delay)
+      await page.waitForSelector('.pr-buttons button', { timeout: 500 });
+
       const buttons = await page.$$eval('.pr-buttons button', btns =>
         btns.map(btn => ({
           text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
