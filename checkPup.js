@@ -5,12 +5,9 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 
-console.log("BOT_TOKEN =", BOT_TOKEN);
-console.log("CHAT_ID =", CHAT_ID);
-
 if (!BOT_TOKEN || !CHAT_ID) {
     console.error("❌ BOT_TOKEN or CHAT_ID is missing. Please set your environment variables!");
-    process.exit(1);
+    // Don't exit, just continue; Render will keep the worker alive
 }
 
 // === Target URL ===
@@ -46,7 +43,7 @@ function formatTimestamp(date) {
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
 
-    console.log(`[${formatTimestamp(new Date())}] ✅ Browser launched and page loaded.`);
+    console.log(`[${formatTimestamp(new Date())}] ✅ Browser launched and page loaded. Render worker is running 24x7.`);
 
     // Function to check buttons
     async function checkButtons() {
@@ -68,7 +65,7 @@ function formatTimestamp(date) {
                 const logTime = formatTimestamp(new Date());
                 console.log(`[${logTime}] Button text: "${btn.text}" | Active: ${btn.active}`);
 
-                if (btn.active) {
+                if (btn.active && BOT_TOKEN && CHAT_ID) {
                     const notifTime = formatTimestamp(new Date());
                     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                         method: 'POST',
