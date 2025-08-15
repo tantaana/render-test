@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "testPup.js",
   "scripts": {
-    "start": "node testPup.js"
+    "start": "node testPup.js",
+    "postinstall": "npx puppeteer install"
   },
   "dependencies": {
     "puppeteer": "^24.6.0"
