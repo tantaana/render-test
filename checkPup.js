@@ -57,13 +57,13 @@ function formatTimestamp(date) {
 
   async function checkLoop() {
     try {
-      // 1) Go/Reload
+      // 1) Go to the page
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
-      // 2) Wait until spinner is gone -> until buttons appear
-      await page.waitForSelector('.pr-buttons button', { timeout: 10000 });
+      // 2) Wait 3 seconds for spinner + real state
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // 3) Check buttons
+      // 3) Check button states
       const buttons = await page.$$eval('.pr-buttons button', btns =>
         btns.map(btn => ({
           text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
@@ -72,11 +72,9 @@ function formatTimestamp(date) {
       );
 
       const now = formatTimestamp(new Date());
-
       for (const btn of buttons) {
         console.log(`[${now}] Button text: "${btn.text}" | Active: ${btn.active}`);
 
-        // If active, fire Telegram message every time
         if (btn.active && BOT_TOKEN && CHAT_ID) {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -93,8 +91,8 @@ function formatTimestamp(date) {
       const now = formatTimestamp(new Date());
       console.error(`[${now}] ❌ Error: `, err.message);
     } finally {
-      // Immediately repeat (no delay or small delay)
-      setTimeout(checkLoop, 500); // slight 0.5s pause to avoid crashing
+      // 4) Immediately refresh again (loop)
+      setTimeout(checkLoop, 0);
     }
   }
 
