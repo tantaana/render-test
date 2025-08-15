@@ -69,6 +69,9 @@ function formatTimestamp(date) {
   // Wait for buttons to appear (handle spinner delay)
   await page.waitForSelector('.pr-buttons button', { timeout: 5000 });
 
+  // Track which buttons we've already notified as active
+  const notifiedButtons = new Set();
+
   async function checkButtons() {
     const startTime = formatTimestamp(new Date());
     console.log(`[${startTime}] Starting a new check...`);
@@ -85,7 +88,8 @@ function formatTimestamp(date) {
         const logTime = formatTimestamp(new Date());
         console.log(`[${logTime}] Button text: "${btn.text}" | Active: ${btn.active}`);
 
-        if (btn.active && BOT_TOKEN && CHAT_ID) {
+        // Only send notification once per button
+        if (btn.active && BOT_TOKEN && CHAT_ID && !notifiedButtons.has(btn.text)) {
           const notifTime = formatTimestamp(new Date());
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
@@ -96,6 +100,7 @@ function formatTimestamp(date) {
             })
           });
           console.log(`[${notifTime}] ✅ Telegram notification sent`);
+          notifiedButtons.add(btn.text);
         }
       }
     } catch (err) {
