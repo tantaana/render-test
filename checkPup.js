@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-const http = require('http'); // <-- added
+const http = require('http');
 
 // Simple HTTP server to satisfy Render web service requirement
 const PORT = process.env.PORT || 10000;
@@ -50,17 +50,19 @@ function formatTimestamp(date) {
     });
 
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
+
+    // NOTE: changed waitUntil from 'networkidle2' → 'domcontentloaded' here:
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
     console.log(`[${formatTimestamp(new Date())}] ✅ Browser launched and page loaded. Render worker is running 24x7.`);
 
-    // Function to check buttons
     async function checkButtons() {
         const startTime = formatTimestamp(new Date());
         console.log(`[${startTime}] Starting a new check...`);
 
         try {
-            await page.reload({ waitUntil: 'networkidle2', timeout: 15000 });
+            // also changed here:
+            await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
 
             const buttons = await page.$$eval('.pr-buttons button', btns =>
                 btns.map(btn => ({
