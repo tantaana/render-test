@@ -15,6 +15,9 @@ http.createServer((req, res) => {
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 
+// === Target URL ===
+const url = 'https://www.goethe.de/ins/bd/en/spr/prf/gzb1.cfm';
+
 function formatTimestamp(date) {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Dhaka',
