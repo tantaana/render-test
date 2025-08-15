@@ -44,7 +44,7 @@ function formatTimestamp(date) {
 
   const page = await browser.newPage();
 
-  // Block heavy resources
+  // Block images, CSS, and fonts for faster load
   await page.setRequestInterception(true);
   page.on('request', req => {
     const type = req.resourceType();
@@ -58,12 +58,12 @@ function formatTimestamp(date) {
   async function checkLoop() {
     try {
       // 1) Go to the page
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
       // 2) Wait 3 seconds for spinner + real state
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // 3) Check button states
+      // 3) Query buttons freshly
       const buttons = await page.$$eval('.pr-buttons button', btns =>
         btns.map(btn => ({
           text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
@@ -91,8 +91,8 @@ function formatTimestamp(date) {
       const now = formatTimestamp(new Date());
       console.error(`[${now}] ❌ Error: `, err.message);
     } finally {
-      // 4) Immediately refresh again (loop)
-      setTimeout(checkLoop, 0);
+      // 4) Small delay before next refresh to prevent detached frame
+      setTimeout(checkLoop, 200); // 0.2s pause
     }
   }
 
