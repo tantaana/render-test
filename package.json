@@ -1,9 +1,9 @@
 {
   "name": "render-test",
   "version": "1.0.0",
-  "main": "testPuppeteer.js",
+  "main": "testPup.js",
   "scripts": {
-    "start": "node testPuppeteer.js"
+    "start": "node testPup.js"
   },
   "dependencies": {
     "puppeteer": "^24.6.0"
