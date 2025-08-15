@@ -51,9 +51,8 @@ function formatTimestamp(date) {
 
     const page = await browser.newPage();
 
-    // NOTE: changed waitUntil from 'networkidle2' → 'domcontentloaded' here:
+    // Initial page load
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-
     console.log(`[${formatTimestamp(new Date())}] ✅ Browser launched and page loaded. Render worker is running 24x7.`);
 
     async function checkButtons() {
@@ -61,9 +60,10 @@ function formatTimestamp(date) {
         console.log(`[${startTime}] Starting a new check...`);
 
         try {
-            // also changed here:
+            // Reload (faster)
             await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
 
+            // Read buttons
             const buttons = await page.$$eval('.pr-buttons button', btns =>
                 btns.map(btn => ({
                     text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
@@ -92,11 +92,13 @@ function formatTimestamp(date) {
             const errTime = formatTimestamp(new Date());
             console.error(`[${errTime}] ❌ Error:`, err.message);
         } finally {
-            const randomInterval = 3400 + Math.random() * 500;
-            console.log(`[${formatTimestamp(new Date())}] ⏱ Next check in ${(randomInterval / 1000).toFixed(2)} seconds`);
-            setTimeout(checkButtons, randomInterval);
+            // Faster randomized interval (2s - 2.5s)
+            const randomDelay = 2000 + Math.random() * 500;
+            console.log(`[${formatTimestamp(new Date())}] ⏱ Next check in ${(randomDelay / 1000).toFixed(2)} seconds`);
+            setTimeout(checkButtons, randomDelay);
         }
     }
 
+    // Start the loop
     checkButtons();
 })();
