@@ -1,12 +1,13 @@
 {
-  "name": "render-test",
+  "name": "goethe-bd-button",
   "version": "1.0.0",
-  "main": "testPup.js",
+  "main": "checkPup.js",
   "scripts": {
-    "start": "node testPup.js",
+    "start": "node checkPup.js",
     "postinstall": "npx puppeteer install"
   },
   "dependencies": {
-    "puppeteer": "^24.6.0"
+    "puppeteer": "^24.6.0",
+    "node-fetch": "^3.3.2"
   }
 }
