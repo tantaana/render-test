@@ -15,16 +15,9 @@ http.createServer((req, res) => {
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 
-if (!BOT_TOKEN || !CHAT_ID) {
-  console.error("❌ BOT_TOKEN or CHAT_ID is missing. Telegram notifications won't be sent.");
-}
-
-// === Target URL ===
-const url = 'https://www.goethe.de/ins/bd/en/spr/prf/gzb1.cfm';
-
-// Helper for formatted time
 function formatTimestamp(date) {
   return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Dhaka',
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -32,7 +25,6 @@ function formatTimestamp(date) {
     minute: '2-digit',
     second: '2-digit',
     hour12: true,
-    timeZone: 'Asia/Dhaka'
   }).format(date).replace(',', ';');
 }
 
@@ -43,64 +35,67 @@ function formatTimestamp(date) {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--single-process',
-      '--disable-extensions'
+      '--disable-gpu'
     ],
   });
 
   const page = await browser.newPage();
 
-  // Block images, fonts, css for faster load
+  // Block heavy resources
   await page.setRequestInterception(true);
-  page.on('request', (req) => {
+  page.on('request', req => {
     const type = req.resourceType();
-    if (['stylesheet', 'font', 'image'].includes(type)) {
+    if (['stylesheet', 'image', 'font'].includes(type)) {
       req.abort();
     } else {
       req.continue();
     }
   });
 
-  // Initial load
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-  console.log(`[${formatTimestamp(new Date())}] ✅ Browser launched and first page loaded.`);
+  async function checkLoop() {
+    try {
+      // 1) Go/Reload
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
-  // Wait for buttons to appear (handle spinner delay)
-  await page.waitForSelector('.pr-buttons button', { timeout: 5000 });
+      // 2) Wait until spinner is gone -> until buttons appear
+      await page.waitForSelector('.pr-buttons button', { timeout: 10000 });
 
-  // Track which buttons we've already notified as active
-  const notifiedButtons = new Set();
+      // 3) Check buttons
+      const buttons = await page.$$eval('.pr-buttons button', btns =>
+        btns.map(btn => ({
+          text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
+          active: !btn.disabled
+        }))
+      );
 
-  // Expose function to the page to trigger Telegram notifications
-  await page.exposeFunction('notifyButtonActive', async (text) => {
-    if (!notifiedButtons.has(text) && BOT_TOKEN && CHAT_ID) {
-      const notifTime = formatTimestamp(new Date());
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: CHAT_ID,
-          text: `🎉 Goethe BD button is ACTIVE!\nButton text: "${text}"\nTime: ${notifTime}`
-        })
-      });
-      console.log(`[${notifTime}] ✅ Telegram notification sent`);
-      notifiedButtons.add(text);
-    }
-  });
+      const now = formatTimestamp(new Date());
 
-  // Inject MutationObserver to detect button state changes immediately
-  await page.evaluate(() => {
-    const buttons = document.querySelectorAll('.pr-buttons button');
-    buttons.forEach(btn => {
-      const observer = new MutationObserver(() => {
-        if (!btn.disabled) {
-          window.notifyButtonActive(btn.innerText.replace(/\s*\n\s*/g, ' ').trim());
+      for (const btn of buttons) {
+        console.log(`[${now}] Button text: "${btn.text}" | Active: ${btn.active}`);
+
+        // If active, fire Telegram message every time
+        if (btn.active && BOT_TOKEN && CHAT_ID) {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: CHAT_ID,
+              text: `🎉 Goethe BD button ACTIVE!\nButton text: "${btn.text}"\nTime: ${now}`
+            })
+          });
+          console.log(`[${now}] ✅ Telegram sent`);
         }
-      });
-      observer.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
-    });
-  });
+      }
+    } catch (err) {
+      const now = formatTimestamp(new Date());
+      console.error(`[${now}] ❌ Error: `, err.message);
+    } finally {
+      // Immediately repeat (no delay or small delay)
+      setTimeout(checkLoop, 500); // slight 0.5s pause to avoid crashing
+    }
+  }
 
-  console.log(`[${formatTimestamp(new Date())}] ✅ MutationObserver set up. Watching button states...`);
+  console.log(`[${formatTimestamp(new Date())}] ✅ STARTING LOOP...`);
+  checkLoop();
+
 })();
