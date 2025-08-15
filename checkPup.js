@@ -2,20 +2,20 @@ const puppeteer = require('puppeteer');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const http = require('http');
 
-// Simple HTTP server to satisfy Render web service requirement
+// Keep Render worker alive
 const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
-  res.writeHead(200, {'Content-Type': 'text/plain'});
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Render worker is alive!');
 }).listen(PORT, () => {
-  console.log(`✅ HTTP server running on port ${PORT}, keeping Render web service alive`);
+  console.log(`✅ HTTP server running on port ${PORT}`);
 });
 
-// === Telegram setup ===
+// Telegram setup
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 
-// === Target URL ===
+// Target URL
 const url = 'https://www.goethe.de/ins/bd/en/spr/prf/gzb1.cfm';
 
 function formatTimestamp(date) {
@@ -57,13 +57,13 @@ function formatTimestamp(date) {
 
   async function checkLoop() {
     try {
-      // 1) Go to the page
+      // Navigate freshly each loop
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
-      // 2) Wait 3 seconds for spinner + real state
+      // Wait 3s for spinner + buttons
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // 3) Query buttons freshly
+      // Query buttons fresh (never keep old references)
       const buttons = await page.$$eval('.pr-buttons button', btns =>
         btns.map(btn => ({
           text: btn.innerText.replace(/\s*\n\s*/g, ' ').trim(),
@@ -72,6 +72,7 @@ function formatTimestamp(date) {
       );
 
       const now = formatTimestamp(new Date());
+
       for (const btn of buttons) {
         console.log(`[${now}] Button text: "${btn.text}" | Active: ${btn.active}`);
 
@@ -91,8 +92,8 @@ function formatTimestamp(date) {
       const now = formatTimestamp(new Date());
       console.error(`[${now}] ❌ Error: `, err.message);
     } finally {
-      // 4) Small delay before next refresh to prevent detached frame
-      setTimeout(checkLoop, 200); // 0.2s pause
+      // Wait a tiny bit before next refresh to prevent detached frames
+      setTimeout(checkLoop, 500); // 0.5s pause is safer
     }
   }
 
